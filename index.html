@@ -3,160 +3,154 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="个人作品、项目经验与荣誉档案">
+  <meta name="description" content="个人作品、荣誉与成长档案">
   <title>个人作品集</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/style.css">
 </head>
-<body class="public-page">
-  <div class="page-grain" aria-hidden="true"></div>
+<body class="site-body refined-portfolio">
+  <div class="grain" aria-hidden="true"></div>
+  <div class="refined-glow glow-left" aria-hidden="true"></div>
+  <div class="refined-glow glow-right" aria-hidden="true"></div>
 
-  <header class="public-header">
-    <div class="site-shell header-inner">
-      <a class="site-brand" href="#top" aria-label="返回顶部">
-        <span class="brand-symbol">A</span>
-        <span class="brand-copy">
-          <b data-brand-name>个人作品集</b>
-          <small>PORTFOLIO / SELECTED WORK</small>
-        </span>
-      </a>
-      <nav class="public-nav" aria-label="主要导航">
-        <a href="#works">作品</a>
-        <a href="#awards">荣誉</a>
-        <a href="#about">关于我</a>
-        <a class="nav-admin" href="admin.html">管理后台 <span>↗</span></a>
-      </nav>
-    </div>
+  <header class="site-header section-shell">
+    <a class="brand" href="#top" aria-label="返回顶部">
+      <span class="brand-dot"></span>
+      <span class="brand-copy">
+        <b data-brand-name>个人作品集</b>
+        <small>SELECTED ARCHIVE</small>
+      </span>
+    </a>
+    <nav class="site-nav" aria-label="主导航">
+      <a href="#works">作品</a>
+      <a href="#certificates">荣誉</a>
+      <a href="#about">关于我</a>
+      <a class="admin-pill" href="admin.html">管理后台 <span>↗</span></a>
+    </nav>
   </header>
 
   <main id="top">
-    <section class="hero-section site-shell">
-      <div class="hero-copy reveal">
-        <p class="section-eyebrow">PERSONAL PORTFOLIO · <span id="display-year"></span></p>
-        <h1>
+    <section class="hero section-shell">
+      <div class="hero-left">
+        <p class="kicker reveal">01 / PERSONAL ARCHIVE <span class="kicker-divider">—</span> <span id="year-label">2026</span></p>
+        <h1 class="hero-title reveal">
           <span data-full-name>你的名字</span>
           <em data-role>创作者 · 设计师</em>
         </h1>
-        <p class="hero-description" data-bio>
-          以清晰的思考、可靠的执行和持续的好奇心，把每一个想法推向更完整的结果。
+        <p class="hero-copy reveal" data-bio>
+          用审美、策略与执行，把每一个想法推向更清晰的结果。这里记录作品、认可与持续成长的轨迹。
         </p>
-        <div class="hero-actions">
-          <a class="button button-dark" href="#works">浏览作品 <span>↓</span></a>
-          <a id="resume-button" class="button button-outline" href="#" target="_blank" rel="noopener" hidden>查看简历 <span>↗</span></a>
-        </div>
-        <div class="hero-info">
-          <div><small>EMAIL</small><strong data-email>your@email.com</strong></div>
-          <div><small>LOCATION</small><strong data-location>中国</strong></div>
+        <div class="hero-actions reveal">
+          <a class="button button-light" href="#works">浏览作品精选 <span>↓</span></a>
+          <a class="button button-line" id="resume-button" href="#" target="_blank" rel="noopener" hidden>查看个人简历 <span>↗</span></a>
         </div>
       </div>
 
-      <div class="hero-art reveal">
-        <div class="art-backdrop"></div>
-        <div class="portrait-frame">
+      <div class="hero-right reveal">
+        <div class="portrait-line-frame" aria-hidden="true"></div>
+        <div class="portrait-panel">
           <img id="avatar-image" alt="个人头像" hidden>
-          <div id="avatar-placeholder" class="avatar-placeholder">
-            <span>PORT<br>FOLIO</span>
+          <div class="avatar-fallback" id="avatar-fallback">
+            <span>THE<br>WORK<br>IS<br>THE<br>VOICE.</span>
           </div>
-          <div class="portrait-label">
-            <span>PROFILE</span>
-            <span>01 / 01</span>
-          </div>
+          <div class="portrait-gradient"></div>
+          <div class="portrait-index">PROFILE / 01</div>
         </div>
-        <div class="hero-stamp">
-          <span>MAKE</span>
-          <b>THINGS<br>MATTER</b>
-          <span>EST. 2026</span>
+        <div class="portrait-stamp">
+          <span>OPEN</span>
+          <b>TO WORK</b>
+          <span>2026</span>
         </div>
+        <div class="hero-note">
+          <span class="pulse-dot"></span>
+          <span>AVAILABLE FOR<br>GOOD IDEAS</span>
+        </div>
+      </div>
+
+      <div class="hero-footer reveal">
+        <div><small>EMAIL</small><strong data-email>your@email.com</strong></div>
+        <div><small>BASE</small><strong data-location>中国</strong></div>
+        <div><small>FOCUS</small><strong data-role>创作者 · 设计师</strong></div>
       </div>
     </section>
 
-    <section class="intro-strip">
-      <div class="site-shell intro-strip-inner">
-        <span>IDEAS INTO OUTCOMES</span>
-        <i></i>
-        <span>THINK · MAKE · REFINE</span>
-        <i></i>
-        <span>PERSONAL ARCHIVE</span>
+    <section class="signature-strip" aria-label="个人关键词">
+      <div class="section-shell signature-inner">
+        <span>THINK WITH CLARITY</span>
+        <i>✦</i>
+        <span>MAKE WITH PURPOSE</span>
+        <i>✦</i>
+        <span>REFINE THE DETAILS</span>
       </div>
     </section>
 
-    <section id="works" class="works-section site-shell">
-      <div class="section-heading reveal">
+    <section class="works-section section-shell" id="works">
+      <div class="section-top reveal">
         <div>
-          <p class="section-eyebrow">01 / SELECTED WORK</p>
-          <h2>作品展示</h2>
+          <p class="kicker">02 / SELECTED WORK</p>
+          <h2>作品不是陈列，<br><em>是解决问题的证据。</em></h2>
         </div>
-        <p>每个项目都记录了一次从想法、方法到落地成果的完整过程。</p>
+        <p class="section-sidecopy">按方向筛选项目。点击任意作品，查看项目图片、简介与相关链接。</p>
       </div>
-
-      <div class="filter-row reveal">
-        <div id="work-filters" class="filter-group" aria-label="作品分类筛选"></div>
-        <span id="work-total" class="record-total">00 PROJECTS</span>
-      </div>
-
-      <div id="works-grid" class="works-grid" aria-live="polite">
-        <div class="empty-state"><span class="loading-dot"></span><p>正在读取作品...</p></div>
+      <div id="work-filters" class="filter-bar reveal" aria-label="作品分类筛选"></div>
+      <div id="works-grid" class="works-archive" aria-live="polite">
+        <div class="loading-state"><span class="mini-loader"></span><p>正在载入作品档案...</p></div>
       </div>
     </section>
 
-    <section id="awards" class="awards-section">
-      <div class="site-shell">
-        <div class="section-heading awards-heading reveal">
+    <section class="recognition-section" id="certificates">
+      <div class="section-shell">
+        <div class="recognition-top reveal">
           <div>
-            <p class="section-eyebrow">02 / RECOGNITION</p>
-            <h2>荣誉与证书</h2>
+            <p class="kicker">03 / RECOGNITION</p>
+            <h2>被看见的努力，<br><em>都有迹可循。</em></h2>
           </div>
-          <div class="award-counter"><strong id="award-total">00</strong><span>项认可</span></div>
+          <div class="recognition-counter"><span id="certificate-count">00</span><small>项认可</small></div>
         </div>
-
-        <div id="award-filters" class="filter-group filter-group-light reveal" aria-label="荣誉分类筛选"></div>
-
-        <div id="awards-list" class="awards-list" aria-live="polite">
-          <div class="empty-state light-empty"><span class="loading-dot"></span><p>正在读取荣誉...</p></div>
+        <div id="certificate-filters" class="filter-bar filter-bar-on-dark reveal" aria-label="奖项分类筛选"></div>
+        <div id="certificate-grid" class="recognition-grid" aria-live="polite">
+          <div class="loading-state dark-loading"><span class="mini-loader"></span><p>正在载入荣誉档案...</p></div>
         </div>
       </div>
     </section>
 
-    <section id="about" class="about-section site-shell">
-      <div class="about-index reveal">03<br><span>ABOUT</span></div>
-      <div class="about-copy reveal">
-        <p class="section-eyebrow">ABOUT ME</p>
-        <h2>认真对待<br>每一次创造。</h2>
+    <section class="about-section section-shell" id="about">
+      <p class="about-index reveal">04<br><span>ABOUT</span></p>
+      <div class="about-main reveal">
+        <h2>把专业做深，<br>把边界做宽。</h2>
         <p data-about-copy>
-          这里记录的不只是成果，也是一段持续积累和不断精进的过程。期待用专业能力参与更多有价值的项目。
+          这里可以继续补充你的学习经历、项目经验、擅长方向与长期目标。作品集不是终点，而是一份不断更新的行动记录。
         </p>
-        <a href="admin.html" class="text-link">进入内容管理后台 <span>↗</span></a>
+        <a class="about-link" href="admin.html">进入内容管理后台 <span>↗</span></a>
       </div>
-      <div class="about-note reveal">
-        <span>NOTES</span>
-        <p>让作品说话，也让过程留下痕迹。</p>
-      </div>
+      <div class="about-mark reveal">A<br>W</div>
     </section>
   </main>
 
-  <footer class="public-footer">
-    <div class="site-shell footer-inner">
-      <span>© <span id="current-year"></span> <b data-full-name>你的名字</b></span>
-      <span>DESIGNED WITH INTENT</span>
-    </div>
+  <footer class="site-footer section-shell">
+    <div><span class="brand-dot"></span> <b data-full-name>你的名字</b></div>
+    <span>© <span id="current-year"></span> / BUILT WITH INTENT</span>
   </footer>
 
-  <dialog id="detail-modal" class="detail-modal">
-    <button type="button" class="modal-close" aria-label="关闭详情">×</button>
-    <div class="modal-layout">
-      <div class="modal-media">
-        <img id="modal-image" alt="" hidden>
-        <div id="modal-placeholder" class="modal-placeholder">PROJECT<br>ARCHIVE</div>
+  <dialog id="archive-modal" class="archive-modal">
+    <button class="modal-close" type="button" aria-label="关闭详情">×</button>
+    <div class="modal-stage">
+      <div class="modal-media-wrap">
+        <img id="modal-image" alt="">
+        <div class="modal-no-image" id="modal-no-image">ARCHIVE<br>ENTRY</div>
       </div>
       <div class="modal-copy">
-        <p id="modal-kicker">SELECTED WORK</p>
+        <p class="modal-kicker" id="modal-type">SELECTED WORK</p>
         <h3 id="modal-title">项目标题</h3>
-        <p id="modal-meta" class="modal-meta"></p>
-        <p id="modal-description" class="modal-description"></p>
+        <p class="modal-meta" id="modal-meta"></p>
+        <p class="modal-description" id="modal-description"></p>
         <a id="modal-project-link" class="modal-link" href="#" target="_blank" rel="noopener" hidden>打开项目链接 <span>↗</span></a>
-        <span id="modal-sequence" class="modal-sequence">01 / 01</span>
+        <div class="modal-foot">
+          <span>CLICK OUTSIDE / ESC TO CLOSE</span>
+          <span id="modal-sequence">01 / 01</span>
+        </div>
       </div>
     </div>
   </dialog>
