@@ -4,69 +4,77 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>个人档案后台</title>
+  <title>作品集管理后台</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="admin-page">
-  <header class="admin-header shell">
-    <a class="brand" href="index.html">
-      <span class="brand-signal"><i></i><i></i><i></i></span>
-      <span class="brand-text"><b>档案控制台</b><small>ADMIN CONSOLE</small></span>
-    </a>
-    <div class="admin-actions">
-      <a href="index.html" target="_blank" rel="noopener">VIEW SITE ↗</a>
-      <button id="sign-out-button" type="button" hidden>LOG OUT</button>
+  <header class="admin-header">
+    <div class="site-shell admin-header-inner">
+      <a class="site-brand brand-on-dark" href="index.html">
+        <span class="brand-symbol">A</span>
+        <span class="brand-copy">
+          <b>作品集后台</b>
+          <small>CONTENT MANAGEMENT</small>
+        </span>
+      </a>
+      <div class="admin-top-actions">
+        <a href="index.html" target="_blank" rel="noopener">查看公开网站 ↗</a>
+        <button id="sign-out-button" type="button" hidden>退出登录</button>
+      </div>
     </div>
   </header>
 
-  <main class="admin-main shell">
-    <section id="setup-notice" class="admin-notice" hidden>
-      <p>[ CONFIGURATION REQUIRED ]</p>
-      <h1>尚未连接数据服务。</h1>
-      <span>请检查 GitHub 中 <code>assets/config.js</code> 是否已经保留你的 Supabase URL 和 Publishable Key。</span>
+  <main class="site-shell admin-main">
+    <section id="setup-notice" class="notice-panel" hidden>
+      <p>CONFIGURATION REQUIRED</p>
+      <h1>请先连接 Supabase。</h1>
+      <span>确认 GitHub 仓库里的 <code>assets/config.js</code> 仍保存着你的 Supabase URL 和 Publishable Key。</span>
     </section>
 
-    <section id="login-panel" class="login-view" hidden>
+    <section id="login-panel" class="login-layout" hidden>
       <div class="login-copy">
-        <p>[ AUTHENTICATION ]</p>
-        <h1>进入<br>管理终端。</h1>
-        <span>内容保存到云端数据库。公开网站刷新后，会自动读取最新资料。</span>
+        <p>PRIVATE ADMIN</p>
+        <h1>管理你的<br><em>个人作品集。</em></h1>
+        <span>上传、分类、编辑和删除内容。保存完成后，公开网站刷新即可展示最新数据。</span>
       </div>
-      <form id="login-form" class="login-box">
-        <label>EMAIL<input id="login-email" type="email" autocomplete="email" required placeholder="you@example.com"></label>
-        <label>PASSWORD<input id="login-password" type="password" autocomplete="current-password" required placeholder="输入密码"></label>
-        <button type="submit">AUTHENTICATE <b>→</b></button>
+      <form id="login-form" class="login-form">
+        <label>邮箱<input id="login-email" type="email" autocomplete="email" placeholder="you@example.com" required></label>
+        <label>密码<input id="login-password" type="password" autocomplete="current-password" placeholder="输入密码" required></label>
+        <button type="submit" class="admin-primary">登录后台 <span>→</span></button>
       </form>
     </section>
 
-    <section id="access-denied" class="admin-notice warning" hidden>
-      <p>[ ACCESS DENIED ]</p>
-      <h1>该账号没有管理权限。</h1>
-      <span>请确认 `profiles.is_admin` 已在 Supabase 中设置为 `true`。</span>
-      <button id="denied-sign-out" type="button">LOG OUT</button>
+    <section id="access-denied" class="notice-panel" hidden>
+      <p>ACCESS DENIED</p>
+      <h1>该账号没有管理员权限。</h1>
+      <span>请确认 Supabase 数据库中该用户的 <code>profiles.is_admin</code> 已设置为 <code>true</code>。</span>
+      <button id="denied-sign-out" type="button" class="admin-secondary">退出账号</button>
     </section>
 
     <section id="dashboard" class="dashboard" hidden>
       <div class="dashboard-heading">
         <div>
-          <p>[ ADMIN SESSION ACTIVE ]</p>
+          <p>CONTENT STUDIO</p>
           <h1>你好，<span id="admin-email"></span></h1>
         </div>
-        <span>每次“新增作品”或“新增荣誉”都会追加一条记录，不会覆盖之前的内容。</span>
+        <span>每次提交“新增作品”或“新增荣誉”都会增加一条内容，不会覆盖之前上传的资料。</span>
       </div>
 
-      <nav class="admin-nav">
-        <a href="#profile-panel">01 PROFILE</a>
-        <a href="#works-panel">02 WORKS <b id="nav-work-count">0</b></a>
-        <a href="#awards-panel">03 AWARDS <b id="nav-award-count">0</b></a>
+      <nav class="dashboard-nav">
+        <a href="#profile-settings">个人信息</a>
+        <a href="#works-manager">作品 <b id="nav-work-count">0</b></a>
+        <a href="#awards-manager">荣誉 <b id="nav-award-count">0</b></a>
       </nav>
 
-      <section class="console-card" id="profile-panel">
-        <div class="console-title"><span>01 / PROFILE SETTINGS</span><b>LIVE DATABASE</b></div>
-        <form id="settings-form" class="console-form">
+      <section id="profile-settings" class="admin-card">
+        <div class="card-header">
+          <div><p>PROFILE SETTINGS</p><h2>个人信息与简历</h2></div>
+          <span class="status-chip">LIVE SYNC</span>
+        </div>
+        <form id="settings-form" class="admin-form">
           <div class="form-grid">
             <label>姓名<input name="full_name" type="text" maxlength="80" required></label>
             <label>身份标签<input name="role" type="text" maxlength="100" placeholder="例如：品牌设计师 · 摄影师"></label>
@@ -75,44 +83,79 @@
           </div>
           <label>个人简介<textarea name="bio" rows="4" maxlength="700"></textarea></label>
           <div class="file-grid">
-            <label class="file-field">个人头像 <small>JPG / PNG / WebP，最大 10 MB</small><input name="avatar_file" type="file" accept="image/jpeg,image/png,image/webp"><b class="file-name">未选择新文件</b></label>
-            <label class="file-field">简历 PDF <small>最大 15 MB</small><input name="resume_file" type="file" accept="application/pdf"><b class="file-name">未选择新文件</b></label>
+            <label class="file-field">
+              个人头像 <small>JPG / PNG / WebP，最大 10 MB</small>
+              <input name="avatar_file" type="file" accept="image/jpeg,image/png,image/webp">
+              <b class="file-name">未选择新文件</b>
+            </label>
+            <label class="file-field">
+              简历 PDF <small>最大 15 MB</small>
+              <input name="resume_file" type="file" accept="application/pdf">
+              <b class="file-name">未选择新文件</b>
+            </label>
           </div>
-          <div class="form-actions"><button type="submit">SAVE PROFILE <b>✓</b></button><span id="settings-status"></span></div>
+          <div class="form-actions">
+            <button type="submit" class="admin-primary">保存个人信息 <span>✓</span></button>
+            <span id="settings-status" class="form-status"></span>
+          </div>
         </form>
       </section>
 
-      <section class="console-card" id="works-panel">
-        <div class="console-title"><span>02 / WORK ARCHIVE</span><b id="admin-work-count">0 RECORDS</b></div>
-        <p class="console-hint">填写一次并提交，即新增一个作品。想继续添加，直接再填写下一项。</p>
-        <form id="work-form" class="console-form">
-          <input name="id" type="hidden"><input name="stored_path" type="hidden">
+      <section id="works-manager" class="admin-card">
+        <div class="card-header">
+          <div><p>WORK ARCHIVE</p><h2>作品管理</h2></div>
+          <span id="admin-work-count" class="count-chip">0 个作品</span>
+        </div>
+        <p class="manager-hint">每次填写后点击“新增作品”都会添加一条。可以一直连续添加，不会覆盖原来的作品。</p>
+        <form id="work-form" class="admin-form manager-form">
+          <input name="id" type="hidden">
+          <input name="stored_path" type="hidden">
           <div class="form-grid">
-            <label>作品名称<input name="title" type="text" maxlength="150" required></label>
-            <label>作品分类<input name="category" type="text" maxlength="80" placeholder="例如：品牌设计 / 摄影"></label>
-            <label class="span-full">项目链接（可选）<input name="project_url" type="url" maxlength="500" placeholder="https://..."></label>
+            <label>作品名称<input name="title" type="text" maxlength="150" required placeholder="例如：城市文化视觉系统"></label>
+            <label>作品分类<input name="category" type="text" maxlength="80" placeholder="例如：品牌设计 / 摄影 / 项目实践"></label>
+            <label class="form-span">项目链接（可选）<input name="project_url" type="url" maxlength="500" placeholder="https://..."></label>
           </div>
-          <label>作品简介<textarea name="description" rows="3" maxlength="1000"></textarea></label>
-          <label class="file-field">作品封面 <small>JPG / PNG / WebP，最大 10 MB；新建时必填</small><input name="image_file" type="file" accept="image/jpeg,image/png,image/webp"><b class="file-name">未选择文件</b></label>
-          <div class="form-actions"><button id="work-submit" type="submit">ADD WORK <b>＋</b></button><button id="work-cancel" class="muted-button" type="button" hidden>CANCEL EDIT</button><span id="work-status"></span></div>
+          <label>作品简介<textarea name="description" rows="3" maxlength="1000" placeholder="介绍项目背景、你的角色、方法与成果。"></textarea></label>
+          <label class="file-field">
+            作品封面图片 <small>JPG / PNG / WebP，最大 10 MB；新建作品时必填</small>
+            <input name="image_file" type="file" accept="image/jpeg,image/png,image/webp">
+            <b class="file-name">未选择文件</b>
+          </label>
+          <div class="form-actions">
+            <button id="work-submit" type="submit" class="admin-primary">新增作品 <span>＋</span></button>
+            <button id="work-cancel" type="button" class="admin-secondary" hidden>取消编辑</button>
+            <span id="work-status" class="form-status"></span>
+          </div>
         </form>
-        <div class="record-list" id="admin-work-list"></div>
+        <div id="admin-work-list" class="admin-records"></div>
       </section>
 
-      <section class="console-card" id="awards-panel">
-        <div class="console-title"><span>03 / AWARD LOG</span><b id="admin-award-count">0 RECORDS</b></div>
-        <p class="console-hint">每次提交会新增一条荣誉记录。分类示例：竞赛奖项、学术荣誉、职业证书。</p>
-        <form id="award-form" class="console-form">
-          <input name="id" type="hidden"><input name="stored_path" type="hidden">
+      <section id="awards-manager" class="admin-card">
+        <div class="card-header">
+          <div><p>RECOGNITION LOG</p><h2>荣誉与证书管理</h2></div>
+          <span id="admin-award-count" class="count-chip">0 项荣誉</span>
+        </div>
+        <p class="manager-hint">可以按“竞赛奖项、学术荣誉、职业证书、校园荣誉”等分类持续新增。</p>
+        <form id="award-form" class="admin-form manager-form">
+          <input name="id" type="hidden">
+          <input name="stored_path" type="hidden">
           <div class="form-grid">
-            <label>奖项 / 证书名称<input name="title" type="text" maxlength="150" required></label>
+            <label>奖项 / 证书名称<input name="title" type="text" maxlength="150" required placeholder="例如：全国大学生广告艺术大赛一等奖"></label>
             <label>荣誉分类<input name="category" type="text" maxlength="80" placeholder="例如：竞赛奖项"></label>
-            <label class="span-full">颁发单位或年份<input name="issuer" type="text" maxlength="150"></label>
+            <label class="form-span">颁发单位或年份<input name="issuer" type="text" maxlength="150" placeholder="例如：2026 · 中国广告协会"></label>
           </div>
-          <label class="file-field">证书图片 <small>JPG / PNG / WebP，最大 10 MB；新建时必填</small><input name="image_file" type="file" accept="image/jpeg,image/png,image/webp"><b class="file-name">未选择文件</b></label>
-          <div class="form-actions"><button id="award-submit" type="submit">ADD AWARD <b>＋</b></button><button id="award-cancel" class="muted-button" type="button" hidden>CANCEL EDIT</button><span id="award-status"></span></div>
+          <label class="file-field">
+            证书图片 <small>JPG / PNG / WebP，最大 10 MB；新建荣誉时必填</small>
+            <input name="image_file" type="file" accept="image/jpeg,image/png,image/webp">
+            <b class="file-name">未选择文件</b>
+          </label>
+          <div class="form-actions">
+            <button id="award-submit" type="submit" class="admin-primary">新增荣誉 <span>＋</span></button>
+            <button id="award-cancel" type="button" class="admin-secondary" hidden>取消编辑</button>
+            <span id="award-status" class="form-status"></span>
+          </div>
         </form>
-        <div class="record-list" id="admin-award-list"></div>
+        <div id="admin-award-list" class="admin-records"></div>
       </section>
     </section>
   </main>
