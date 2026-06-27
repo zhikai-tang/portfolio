@@ -1,300 +1,218 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const cfg = window.PORTFOLIO_CONFIG || {};
-const isConfigured = Boolean(
-  cfg.supabaseUrl &&
-  cfg.supabasePublishableKey &&
+const hasConfig = Boolean(
+  cfg.supabaseUrl && cfg.supabasePublishableKey &&
   !cfg.supabaseUrl.includes("YOUR_PROJECT_REF") &&
   !cfg.supabasePublishableKey.includes("YOUR_PUBLISHABLE")
 );
-const supabase = isConfigured ? createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
-const $ = (selector, parent = document) => parent.querySelector(selector);
-const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
+const supabase = hasConfig ? createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
+const $ = (s, p = document) => p.querySelector(s);
+const $$ = (s, p = document) => [...p.querySelectorAll(s)];
 
-const demoWorks = [
-  { id: "demo-1", title: "作品档案将在这里展开", category: "品牌设计", description: "登录后台后，每次上传一件作品都会新增到这个作品墙中。", image_url: "", project_url: null },
-  { id: "demo-2", title: "分类让项目更有结构", category: "项目实践", description: "可以按视觉设计、摄影、研究、开发或任何自定义分类筛选。", image_url: "", project_url: null }
-];
-const demoCertificates = [
-  { id: "demo-c1", title: "荣誉与证书", category: "竞赛奖项", issuer: "在管理后台持续添加", image_url: "" }
-];
+let works = [];
+let awards = [];
+let workFilter = "全部";
+let awardFilter = "全部";
+let activeWorkId = null;
 
-let allWorks = [];
-let allCertificates = [];
-let activeWorkCategory = "全部";
-let activeCertificateCategory = "全部";
+const fallbackWorks = [
+  {id:"demo-1",title:"项目档案将在这里显示",category:"作品",description:"管理员后台每新增一件作品，都会自动进入这个项目索引。",image_url:"",project_url:null},
+  {id:"demo-2",title:"分类可以自由填写",category:"系统说明",description:"例如：品牌设计、视觉设计、摄影、编程项目、研究成果。",image_url:"",project_url:null}
+];
+const fallbackAwards = [{id:"award-1",title:"荣誉记录将在这里显示",category:"荣誉",issuer:"在后台继续新增",image_url:""}];
 
 document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
   $("#current-year").textContent = new Date().getFullYear();
-  $("#year-label").textContent = new Date().getFullYear();
-  setupModal();
-  setupReveal();
+  $("#current-date").textContent = new Intl.DateTimeFormat("zh-CN", {year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()).replaceAll("/", ".");
+  bindBootScreen();
+  bindModal();
+  bindCursor();
 
   if (!supabase) {
     applySettings({});
-    allWorks = demoWorks;
-    allCertificates = demoCertificates;
+    works = fallbackWorks;
+    awards = fallbackAwards;
     renderAll();
-    finishLoading();
     return;
   }
 
-  const [settingsRes, worksRes, certificatesRes] = await Promise.all([
+  const [settingsRes, worksRes, awardsRes] = await Promise.all([
     supabase.from("site_settings").select("*").eq("id", true).maybeSingle(),
-    supabase.from("works").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
-    supabase.from("certificates").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
+    supabase.from("works").select("*").order("sort_order", {ascending:true}).order("created_at", {ascending:false}),
+    supabase.from("certificates").select("*").order("sort_order", {ascending:true}).order("created_at", {ascending:false})
   ]);
 
   if (settingsRes.error) console.error(settingsRes.error);
   if (worksRes.error) console.error(worksRes.error);
-  if (certificatesRes.error) console.error(certificatesRes.error);
+  if (awardsRes.error) console.error(awardsRes.error);
 
   applySettings(settingsRes.data || {});
-  allWorks = worksRes.data || [];
-  allCertificates = certificatesRes.data || [];
+  works = worksRes.data || [];
+  awards = awardsRes.data || [];
   renderAll();
-  finishLoading();
 }
 
-function renderAll() {
-  renderFilterBar($("#work-filters"), allWorks, activeWorkCategory, (category) => {
-    activeWorkCategory = category;
-    renderWorks();
+function bindBootScreen() {
+  const boot = $("#boot-screen");
+  const enter = () => {
+    boot.classList.add("exit");
+    document.body.classList.add("initialized");
+    setTimeout(() => boot.remove(), 650);
+  };
+  $("#press-start").addEventListener("click", enter);
+  window.addEventListener("keydown", (event) => {
+    if ((event.key === "Enter" || event.key === " ") && !document.body.classList.contains("initialized")) {
+      event.preventDefault(); enter();
+    }
   });
-  renderFilterBar($("#certificate-filters"), allCertificates, activeCertificateCategory, (category) => {
-    activeCertificateCategory = category;
-    renderCertificates();
-  });
-  renderWorks();
-  renderCertificates();
 }
-
-function applySettings(settings) {
-  const get = (key, fallback) => settings[key] || fallback;
-  $$("[data-full-name]").forEach((el) => el.textContent = get("full_name", "你的名字"));
-  $$("[data-brand-name]").forEach((el) => el.textContent = `${get("full_name", "你的名字")} · 作品集`);
-  $$("[data-role]").forEach((el) => el.textContent = get("role", "创作者 · 设计师"));
-  $$("[data-bio]").forEach((el) => el.textContent = get("bio", "用审美、策略与执行，把每一个想法推向更清晰的结果。这里记录作品、认可与持续成长的轨迹。"));
-  $$("[data-about-copy]").forEach((el) => el.textContent = get("bio", "这里可以继续补充你的学习经历、项目经验、擅长方向与长期目标。作品集不是终点，而是一份不断更新的行动记录。"));
-  $$("[data-email]").forEach((el) => el.textContent = get("email", "your@email.com"));
-  $$("[data-location]").forEach((el) => el.textContent = get("location", "中国"));
+function bindCursor() {
+  const glow = $(".cursor-glow");
+  window.addEventListener("pointermove", (e) => {
+    glow.style.transform = `translate(${e.clientX - 180}px, ${e.clientY - 180}px)`;
+  });
+}
+function applySettings(s) {
+  const get = (k, d) => s[k] || d;
+  $$("[data-full-name]").forEach(el => el.textContent = get("full_name","你的名字"));
+  $$("[data-brand-name]").forEach(el => el.textContent = `${get("full_name","你的名字")} · 作品集`);
+  $$("[data-role]").forEach(el => el.textContent = get("role","创作者 · 设计师"));
+  $$("[data-bio]").forEach(el => el.textContent = get("bio","用持续的观察、思考和执行，把抽象的想法转化为可以被看见、被使用的成果。"));
+  $$("[data-about-copy]").forEach(el => el.textContent = get("bio","这里是我对项目、成长和专业方向的长期记录。好的作品不仅拥有完成度，也应该有清晰的逻辑、真实的价值和持续演化的空间。"));
+  $$("[data-email]").forEach(el => el.textContent = get("email","your@email.com"));
+  $$("[data-location]").forEach(el => el.textContent = get("location","中国"));
 
   const avatar = $("#avatar-image");
-  if (settings.avatar_url) {
-    avatar.src = settings.avatar_url;
+  if (s.avatar_url) {
+    avatar.src = s.avatar_url;
     avatar.hidden = false;
-    $("#avatar-fallback").hidden = true;
+    $("#avatar-placeholder").hidden = true;
   }
   const resume = $("#resume-button");
-  if (settings.resume_url) {
-    resume.href = settings.resume_url;
+  if (s.resume_url) {
+    resume.href = s.resume_url;
     resume.hidden = false;
   }
-  document.title = `${get("full_name", "个人作品集")} — 作品档案`;
+  document.title = `${get("full_name","个人作品集")} — 个人档案`;
 }
-
-function renderFilterBar(container, entries, activeCategory, onSelect) {
-  const categories = [...new Set(entries.map((item) => item.category || (container.id === "certificate-filters" ? "荣誉" : "作品")).filter(Boolean))];
-  const values = ["全部", ...categories];
+function renderAll() {
+  renderFilters($("#work-filters"), works, workFilter, (v) => {workFilter = v; renderWorks();});
+  renderFilters($("#award-filters"), awards, awardFilter, (v) => {awardFilter = v; renderAwards();});
+  renderWorks();
+  renderAwards();
+}
+function renderFilters(container, data, active, onChange) {
+  const categories = [...new Set(data.map(x => x.category || "未分类"))];
+  const list = ["全部", ...categories];
   container.innerHTML = "";
-
-  values.forEach((category) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = `filter-chip${category === activeCategory ? " active" : ""}`;
-    button.innerHTML = `<span>${category}</span><i>${category === "全部" ? entries.length : entries.filter((entry) => (entry.category || (container.id === "certificate-filters" ? "荣誉" : "作品")) === category).length}</i>`;
-    button.addEventListener("click", () => {
-      onSelect(category);
-      [...container.children].forEach((node) => node.classList.toggle("active", node === button));
+  list.forEach(category => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = `filter-button${category === active ? " active" : ""}`;
+    const count = category === "全部" ? data.length : data.filter(x => (x.category || "未分类") === category).length;
+    btn.innerHTML = `<span>${category}</span><b>${String(count).padStart(2,"0")}</b>`;
+    btn.addEventListener("click", () => {
+      onChange(category);
+      $$(".filter-button", container).forEach(x => x.classList.toggle("active", x === btn));
     });
-    container.append(button);
+    container.append(btn);
   });
 }
-
+function filtered(data, filter) {
+  return filter === "全部" ? data : data.filter(x => (x.category || "未分类") === filter);
+}
 function renderWorks() {
-  const grid = $("#works-grid");
-  grid.innerHTML = "";
-  const items = activeWorkCategory === "全部"
-    ? allWorks
-    : allWorks.filter((item) => (item.category || "作品") === activeWorkCategory);
+  const list = $("#works-list");
+  const data = filtered(works, workFilter);
+  list.innerHTML = "";
+  $("#work-count").textContent = `${String(data.length).padStart(2,"0")} RECORDS`;
 
-  if (!items.length) {
-    grid.innerHTML = `<div class="empty-archive"><b>NO ENTRY</b><p>这个分类还没有作品。</p></div>`;
+  if (!data.length) {
+    list.innerHTML = `<div class="empty-row">NO RECORDS IN THIS CATEGORY</div>`;
+    resetPreview();
     return;
   }
-
-  items.forEach((work, index) => {
-    const card = document.createElement("article");
-    card.className = `work-tile reveal tile-${(index % 5) + 1}`;
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "work-open";
-
-    const media = document.createElement("div");
-    media.className = "work-media";
-    if (work.image_url) {
-      const image = new Image();
-      image.src = work.image_url;
-      image.alt = work.title || "作品图片";
-      image.loading = "lazy";
-      media.append(image);
-    } else {
-      const placeholder = document.createElement("div");
-      placeholder.className = "media-placeholder";
-      placeholder.textContent = `WORK / ${String(index + 1).padStart(2, "0")}`;
-      media.append(placeholder);
-    }
-
-    const shade = document.createElement("span");
-    shade.className = "media-shade";
-    const open = document.createElement("span");
-    open.className = "open-mark";
-    open.textContent = "VIEW CASE ↗";
-    media.append(shade, open);
-
-    const content = document.createElement("div");
-    content.className = "work-content";
-    const eyebrow = document.createElement("p");
-    eyebrow.className = "card-kicker";
-    eyebrow.textContent = `${String(index + 1).padStart(2, "0")} / ${work.category || "作品"}`;
-    const title = document.createElement("h3");
-    title.textContent = work.title || "未命名作品";
-    const description = document.createElement("p");
-    description.textContent = work.description || "暂无项目介绍。";
-    content.append(eyebrow, title, description);
-
-    button.append(media, content);
-    button.addEventListener("click", () => openArchive(work, "作品档案", index + 1, items.length));
-    card.append(button);
-    grid.append(card);
+  data.forEach((work, index) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "work-row";
+    item.dataset.id = work.id;
+    item.innerHTML = `<span class="row-number">${String(index+1).padStart(2,"0")}</span><span class="row-copy"><small>${escapeHtml(work.category || "作品")}</small><strong>${escapeHtml(work.title || "未命名作品")}</strong></span><span class="row-arrow">↗</span>`;
+    item.addEventListener("mouseenter", () => setPreview(work, index + 1));
+    item.addEventListener("focus", () => setPreview(work, index + 1));
+    item.addEventListener("click", () => openModal(work, "WORK", index + 1));
+    list.append(item);
   });
-  observeNewReveals(grid);
+  const selected = data.find(x => x.id === activeWorkId) || data[0];
+  setPreview(selected, data.indexOf(selected) + 1);
 }
-
-function renderCertificates() {
-  const grid = $("#certificate-grid");
-  grid.innerHTML = "";
-  const items = activeCertificateCategory === "全部"
-    ? allCertificates
-    : allCertificates.filter((item) => (item.category || "荣誉") === activeCertificateCategory);
-
-  $("#certificate-count").textContent = String(allCertificates.length).padStart(2, "0");
-
-  if (!items.length) {
-    grid.innerHTML = `<div class="empty-archive empty-on-dark"><b>NO ENTRY</b><p>这个分类还没有荣誉记录。</p></div>`;
-    return;
-  }
-
-  items.forEach((certificate, index) => {
-    const card = document.createElement("button");
-    card.type = "button";
-    card.className = "recognition-card reveal";
-
-    const number = document.createElement("span");
-    number.className = "recognition-number";
-    number.textContent = String(index + 1).padStart(2, "0");
-
-    const media = document.createElement("div");
-    media.className = "recognition-media";
-    if (certificate.image_url) {
-      const image = new Image();
-      image.src = certificate.image_url;
-      image.alt = certificate.title || "证书图片";
-      image.loading = "lazy";
-      media.append(image);
-    } else {
-      media.innerHTML = `<span>AWARD<br>ENTRY</span>`;
-    }
-
-    const body = document.createElement("span");
-    body.className = "recognition-body";
-    const category = document.createElement("small");
-    category.textContent = certificate.category || "荣誉";
-    const title = document.createElement("strong");
-    title.textContent = certificate.title || "未命名荣誉";
-    const issuer = document.createElement("em");
-    issuer.textContent = certificate.issuer || "荣誉档案";
-    body.append(category, title, issuer);
-
-    const arrow = document.createElement("span");
-    arrow.className = "recognition-arrow";
-    arrow.textContent = "↗";
-    card.append(number, media, body, arrow);
-    card.addEventListener("click", () => openArchive(certificate, "荣誉档案", index + 1, items.length));
-    grid.append(card);
-  });
-  observeNewReveals(grid);
-}
-
-function setupModal() {
-  const dialog = $("#archive-modal");
-  $(".modal-close", dialog).addEventListener("click", () => dialog.close());
-  dialog.addEventListener("click", (event) => {
-    if (event.target === dialog) dialog.close();
-  });
-}
-
-function openArchive(entry, type, sequence, total) {
-  const dialog = $("#archive-modal");
-  const image = $("#modal-image");
-  const noImage = $("#modal-no-image");
-
-  $("#modal-type").textContent = type;
-  $("#modal-title").textContent = entry.title || "未命名条目";
-  $("#modal-meta").textContent = type === "作品档案"
-    ? (entry.category || "作品")
-    : `${entry.category || "荣誉"}${entry.issuer ? ` · ${entry.issuer}` : ""}`;
-  $("#modal-description").textContent = entry.description || (type === "作品档案" ? "暂无项目介绍。" : "点击查看荣誉证书原图。");
-  $("#modal-sequence").textContent = `${String(sequence).padStart(2, "0")} / ${String(total).padStart(2, "0")}`;
-
-  if (entry.image_url) {
-    image.src = entry.image_url;
-    image.alt = entry.title || "";
+function setPreview(work, number) {
+  activeWorkId = work.id;
+  $$(".work-row").forEach(x => x.classList.toggle("selected", x.dataset.id === work.id));
+  const image = $("#preview-image");
+  const placeholder = $("#preview-placeholder");
+  if (work.image_url) {
+    image.src = work.image_url;
+    image.alt = work.title || "作品图片";
     image.hidden = false;
-    noImage.hidden = true;
+    placeholder.hidden = true;
   } else {
     image.hidden = true;
-    noImage.hidden = false;
+    placeholder.hidden = false;
   }
-
+  $("#preview-id").textContent = `REC.${String(number).padStart(2,"0")}`;
+  $("#preview-category").textContent = work.category || "作品";
+  $("#preview-title").textContent = work.title || "未命名作品";
+}
+function resetPreview() {
+  $("#preview-image").hidden = true;
+  $("#preview-placeholder").hidden = false;
+  $("#preview-id").textContent = "---";
+  $("#preview-category").textContent = "WAITING FOR INPUT";
+  $("#preview-title").textContent = "选择左侧项目";
+}
+function renderAwards() {
+  const grid = $("#awards-grid");
+  const data = filtered(awards, awardFilter);
+  grid.innerHTML = "";
+  $("#award-total").textContent = String(awards.length).padStart(2,"0");
+  if (!data.length) {
+    grid.innerHTML = `<div class="empty-award">NO ENTRIES IN THIS CATEGORY</div>`;
+    return;
+  }
+  data.forEach((award, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "award-card";
+    const image = award.image_url ? `<img src="${escapeAttr(award.image_url)}" alt="">` : `<span>AWARD<br>LOG</span>`;
+    button.innerHTML = `<span class="award-index">${String(index+1).padStart(2,"0")}</span><div class="award-thumb">${image}</div><div class="award-copy"><small>${escapeHtml(award.category || "荣誉")}</small><strong>${escapeHtml(award.title || "未命名荣誉")}</strong><em>${escapeHtml(award.issuer || "荣誉记录")}</em></div><span class="award-open">OPEN ↗</span>`;
+    button.addEventListener("click", () => openModal(award, "AWARD", index + 1));
+    grid.append(button);
+  });
+}
+function bindModal() {
+  const dialog = $("#project-modal");
+  $(".modal-close", dialog).addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", event => { if (event.target === dialog) dialog.close(); });
+}
+function openModal(entry, type, index) {
+  const dialog = $("#project-modal");
+  const image = $("#modal-image");
+  const placeholder = $("#modal-placeholder");
+  $("#modal-index").textContent = `[ ${String(index).padStart(2,"0")} / ${type} ]`;
+  $("#modal-title").textContent = entry.title || "未命名条目";
+  $("#modal-meta").textContent = type === "WORK" ? (entry.category || "作品") : `${entry.category || "荣誉"}${entry.issuer ? " · " + entry.issuer : ""}`;
+  $("#modal-description").textContent = entry.description || (type === "WORK" ? "暂无项目说明。" : "点击查看荣誉证书原图。");
+  if (entry.image_url) {
+    image.src = entry.image_url; image.alt = entry.title || "";
+    image.hidden = false; placeholder.hidden = true;
+  } else { image.hidden = true; placeholder.hidden = false; }
   const link = $("#modal-project-link");
-  if (entry.project_url) {
-    link.href = entry.project_url;
-    link.hidden = false;
-  } else {
-    link.hidden = true;
-  }
-
+  if (entry.project_url) { link.href = entry.project_url; link.hidden = false; } else link.hidden = true;
   dialog.showModal();
 }
-
-function setupReveal() {
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach((entry) => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add("is-visible");
-        observer.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.12 });
-
-  window.__revealObserver = observer;
-  observeNewReveals(document);
-}
-
-function observeNewReveals(parent) {
-  const observer = window.__revealObserver;
-  $$(".reveal:not(.is-visible)", parent).forEach((element, index) => {
-    element.style.setProperty("--reveal-delay", `${Math.min(index * 55, 330)}ms`);
-    observer?.observe(element);
-  });
-}
-
-function finishLoading() {
-  requestAnimationFrame(() => {
-    document.body.classList.add("ready");
-    observeNewReveals(document);
-  });
-}
+function escapeHtml(v) { return String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function escapeAttr(v) { return escapeHtml(v); }
