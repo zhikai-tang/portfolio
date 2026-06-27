@@ -4,184 +4,160 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex,nofollow">
-  <title>作品集管理后台</title>
+  <title>作品集内容后台</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&family=Noto+Sans+SC:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="assets/style.css">
 </head>
 <body class="admin-body">
-  <div class="noise" aria-hidden="true"></div>
-
-  <header class="admin-header">
+  <div class="admin-grid-bg" aria-hidden="true"></div>
+  <header class="admin-header section-shell">
     <a class="brand" href="index.html">
-      <span class="brand-mark">P</span>
-      <span class="brand-name">作品集管理</span>
+      <span class="brand-dot"></span>
+      <span class="brand-copy"><b>内容控制台</b><small>PRIVATE STUDIO</small></span>
     </a>
     <div class="admin-header-actions">
-      <a class="mini-link" href="index.html" target="_blank" rel="noopener">查看网站 ↗</a>
-      <button id="sign-out-button" class="mini-button" type="button" hidden>退出登录</button>
+      <a href="index.html" target="_blank" rel="noopener">查看公开网站 ↗</a>
+      <button id="sign-out-button" type="button" hidden>退出</button>
     </div>
   </header>
 
-  <main class="admin-shell">
-    <section id="setup-notice" class="setup-notice" hidden>
-      <p class="eyebrow">CONFIGURATION REQUIRED</p>
-      <h1>请先连接 Supabase</h1>
-      <p>打开 <code>assets/config.js</code>，填入项目 URL 和 Publishable / Anon Key；再按 README 完成数据库初始化。</p>
+  <main class="admin-shell section-shell">
+    <section id="setup-notice" class="admin-notice" hidden>
+      <p class="kicker">CONFIGURATION REQUIRED</p>
+      <h1>还差最后一步连接。</h1>
+      <p>请保留并检查 GitHub 仓库中的 <code>assets/config.js</code>，确认已填入正确的 Supabase Project URL 与 Publishable Key。</p>
     </section>
 
-    <section id="login-panel" class="login-panel" hidden>
-      <div class="login-intro">
-        <p class="eyebrow">PRIVATE ADMIN</p>
-        <h1>管理你的<br><em>线上作品集。</em></h1>
-        <p>登录后可上传图片、证书与简历；公开页面会自动读取并展示最新内容。</p>
-        <a href="index.html" class="text-link">返回作品集 <span>←</span></a>
+    <section id="login-panel" class="login-layout" hidden>
+      <div class="login-copy">
+        <p class="kicker">PRIVATE STUDIO / ADMIN ONLY</p>
+        <h1>上传、分类、<br><em>更新你的作品档案。</em></h1>
+        <p>登录以后，公开网站会自动读取你刚刚保存的内容；无需修改 HTML，也无需重新部署网站。</p>
+        <a href="index.html">← 返回公开网站</a>
       </div>
-      <form id="login-form" class="login-form">
-        <label>
-          邮箱
-          <input id="login-email" type="email" autocomplete="email" placeholder="you@example.com" required>
-        </label>
-        <label>
-          密码
-          <input id="login-password" type="password" autocomplete="current-password" placeholder="输入密码" required>
-        </label>
-        <button class="button button-primary full-width" type="submit">登录管理后台 <span>→</span></button>
-        <p class="form-note">后台账号需先在 Supabase Auth 中创建，并在数据库中授予管理员权限。</p>
+      <form id="login-form" class="login-card">
+        <label>邮箱<input id="login-email" type="email" autocomplete="email" required placeholder="you@example.com"></label>
+        <label>密码<input id="login-password" type="password" autocomplete="current-password" required placeholder="输入密码"></label>
+        <button type="submit" class="admin-primary">登录管理后台 <span>→</span></button>
+        <p>仅被授予管理员权限的账号可以编辑内容。</p>
       </form>
     </section>
 
-    <section id="access-denied" class="setup-notice danger-notice" hidden>
-      <p class="eyebrow">ACCESS DENIED</p>
-      <h1>该账号不是管理员</h1>
-      <p>请在 Supabase SQL Editor 中将该账号的 <code>profiles.is_admin</code> 设置为 <code>true</code>，然后重新登录。</p>
-      <button id="denied-sign-out" class="button button-ghost" type="button">退出登录</button>
+    <section id="access-denied" class="admin-notice notice-warn" hidden>
+      <p class="kicker">ACCESS DENIED</p>
+      <h1>这个账号还没有管理权限。</h1>
+      <p>请在 Supabase SQL Editor 中把该邮箱的 <code>profiles.is_admin</code> 设置为 <code>true</code> 后再登录。</p>
+      <button id="denied-sign-out" class="admin-secondary" type="button">退出账号</button>
     </section>
 
     <section id="dashboard" class="dashboard" hidden>
-      <div class="dashboard-intro">
+      <div class="dashboard-hero">
         <div>
-          <p class="eyebrow">DASHBOARD</p>
+          <p class="kicker">CONTENT STUDIO</p>
           <h1>你好，<span id="admin-email"></span></h1>
         </div>
-        <p>在这里上传和管理所有内容。保存完成后，公开网站刷新即可显示新数据。</p>
+        <p>每次点击上传，都会新增一项内容。你可以持续上传任意数量的作品和奖项，并在下方随时编辑或删除。</p>
       </div>
 
-      <div class="dashboard-nav">
+      <nav class="dashboard-tabs" aria-label="内容管理导航">
         <a href="#profile-settings">个人信息</a>
-        <a href="#work-manager">作品管理</a>
-        <a href="#certificate-manager">证书管理</a>
-      </div>
+        <a href="#work-manager">作品 <span id="nav-work-count">0</span></a>
+        <a href="#certificate-manager">荣誉 <span id="nav-certificate-count">0</span></a>
+      </nav>
 
-      <section class="admin-card" id="profile-settings">
-        <div class="card-title">
-          <div>
-            <p class="eyebrow">SITE SETTINGS</p>
-            <h2>个人信息与简历</h2>
-          </div>
-          <span class="status-dot">实时保存</span>
+      <section class="studio-card" id="profile-settings">
+        <div class="studio-head">
+          <div><p class="kicker">PROFILE</p><h2>个人信息与简历</h2></div>
+          <span class="live-tag">LIVE SYNC</span>
         </div>
-
-        <form id="settings-form" class="admin-form">
+        <form id="settings-form" class="studio-form">
           <div class="form-grid">
             <label>姓名<input name="full_name" type="text" maxlength="80" required></label>
-            <label>身份标签<input name="role" type="text" maxlength="100" placeholder="例如：视觉设计师 · 开发者"></label>
+            <label>身份标签<input name="role" type="text" maxlength="100" placeholder="例如：品牌设计师 · 策展人"></label>
             <label>公开邮箱<input name="email" type="email" maxlength="150"></label>
             <label>所在地<input name="location" type="text" maxlength="100" placeholder="例如：上海，中国"></label>
           </div>
-          <label>个人简介<textarea name="bio" rows="4" maxlength="600"></textarea></label>
-          <div class="upload-grid">
-            <label class="file-field">
+          <label>个人简介<textarea name="bio" rows="4" maxlength="700" placeholder="用两三句话说明你的方向、优势或经历。"></textarea></label>
+          <div class="file-grid">
+            <label class="file-box">
               <span>个人头像 <small>JPG / PNG / WebP，最大 10 MB</small></span>
               <input name="avatar_file" type="file" accept="image/jpeg,image/png,image/webp">
-              <span class="file-name" data-file-name="avatar_file">未选择新文件</span>
+              <b class="file-name">未选择新文件</b>
             </label>
-            <label class="file-field">
+            <label class="file-box">
               <span>简历 PDF <small>最大 15 MB</small></span>
               <input name="resume_file" type="file" accept="application/pdf">
-              <span class="file-name" data-file-name="resume_file">未选择新文件</span>
+              <b class="file-name">未选择新文件</b>
             </label>
           </div>
           <div class="form-actions">
-            <button class="button button-primary" type="submit">保存个人信息 <span>✓</span></button>
+            <button type="submit" class="admin-primary">保存个人信息 <span>✓</span></button>
             <span class="form-status" id="settings-status"></span>
           </div>
         </form>
       </section>
 
-      <section class="admin-card" id="work-manager">
-        <div class="card-title">
-          <div>
-            <p class="eyebrow">WORKS</p>
-            <h2>作品管理</h2>
-          </div>
-          <span class="count-badge" id="admin-work-count">0 个作品</span>
+      <section class="studio-card" id="work-manager">
+        <div class="studio-head">
+          <div><p class="kicker">WORK ARCHIVE</p><h2>作品管理</h2></div>
+          <span class="count-tag" id="admin-work-count">0 个作品</span>
         </div>
-
-        <form id="work-form" class="admin-form manager-form">
+        <div class="upload-tip">每次提交会新增 <strong>1 个作品</strong>。上传后可继续填写下一件，不会覆盖之前的内容。</div>
+        <form id="work-form" class="studio-form manager-form">
           <input name="id" type="hidden">
           <input name="stored_path" type="hidden">
           <div class="form-grid">
-            <label>作品名称<input name="title" type="text" maxlength="150" required></label>
-            <label>作品分类<input name="category" type="text" maxlength="80" placeholder="例如：视觉设计"></label>
-            <label class="full-span">项目链接（可选）<input name="project_url" type="url" maxlength="500" placeholder="https://..."></label>
+            <label>作品名称<input name="title" type="text" maxlength="150" required placeholder="例如：城市文化视觉系统"></label>
+            <label>作品分类<input name="category" type="text" maxlength="80" placeholder="例如：品牌设计 / 摄影 / 项目实践"></label>
+            <label class="wide">项目链接（可选）<input name="project_url" type="url" maxlength="500" placeholder="https://..."></label>
           </div>
-          <label>作品简介<textarea name="description" rows="3" maxlength="1000" placeholder="介绍项目背景、你的角色、成果等"></textarea></label>
-          <label class="file-field">
-            <span>作品图片 <small>JPG / PNG / WebP，最大 10 MB；新建时必填</small></span>
+          <label>作品简介<textarea name="description" rows="3" maxlength="1000" placeholder="写明项目背景、你的角色、方法与成果。"></textarea></label>
+          <label class="file-box">
+            <span>作品封面图片 <small>JPG / PNG / WebP，最大 10 MB；新建作品时必填</small></span>
             <input name="image_file" type="file" accept="image/jpeg,image/png,image/webp">
-            <span class="file-name" data-file-name="image_file">未选择文件</span>
+            <b class="file-name">未选择文件</b>
           </label>
           <div class="form-actions">
-            <button class="button button-primary" id="work-submit" type="submit">上传作品 <span>↑</span></button>
-            <button class="button button-ghost" id="work-cancel" type="button" hidden>取消编辑</button>
+            <button class="admin-primary" id="work-submit" type="submit">新增作品 <span>＋</span></button>
+            <button class="admin-secondary" id="work-cancel" type="button" hidden>取消编辑</button>
             <span class="form-status" id="work-status"></span>
           </div>
         </form>
-
-        <div class="admin-items" id="admin-work-list">
-          <p class="muted">正在读取作品...</p>
-        </div>
+        <div class="admin-items" id="admin-work-list"><p class="muted">正在读取作品...</p></div>
       </section>
 
-      <section class="admin-card" id="certificate-manager">
-        <div class="card-title">
-          <div>
-            <p class="eyebrow">RECOGNITION</p>
-            <h2>证书与获奖管理</h2>
-          </div>
-          <span class="count-badge" id="admin-certificate-count">0 项荣誉</span>
+      <section class="studio-card" id="certificate-manager">
+        <div class="studio-head">
+          <div><p class="kicker">RECOGNITION ARCHIVE</p><h2>奖项与证书管理</h2></div>
+          <span class="count-tag" id="admin-certificate-count">0 项荣誉</span>
         </div>
-
-        <form id="certificate-form" class="admin-form manager-form">
+        <div class="upload-tip">每次提交会新增 <strong>1 项荣誉</strong>。增加分类后，公开页面可按“竞赛奖项 / 职业资格 / 学术荣誉”等筛选。</div>
+        <form id="certificate-form" class="studio-form manager-form">
           <input name="id" type="hidden">
           <input name="stored_path" type="hidden">
           <div class="form-grid">
-            <label>证书 / 奖项名称<input name="title" type="text" maxlength="150" required></label>
-            <label>颁发单位或年份<input name="issuer" type="text" maxlength="150" placeholder="例如：2026 · XX 大赛"></label>
+            <label>证书 / 奖项名称<input name="title" type="text" maxlength="150" required placeholder="例如：全国大学生广告艺术大赛一等奖"></label>
+            <label>荣誉分类<input name="category" type="text" maxlength="80" placeholder="例如：竞赛奖项 / 职业证书"></label>
+            <label class="wide">颁发单位或年份<input name="issuer" type="text" maxlength="150" placeholder="例如：2026 · 中国广告协会"></label>
           </div>
-          <label class="file-field">
+          <label class="file-box">
             <span>证书图片 <small>JPG / PNG / WebP，最大 10 MB；新建时必填</small></span>
             <input name="image_file" type="file" accept="image/jpeg,image/png,image/webp">
-            <span class="file-name" data-file-name="image_file">未选择文件</span>
+            <b class="file-name">未选择文件</b>
           </label>
           <div class="form-actions">
-            <button class="button button-primary" id="certificate-submit" type="submit">上传证书 <span>↑</span></button>
-            <button class="button button-ghost" id="certificate-cancel" type="button" hidden>取消编辑</button>
+            <button class="admin-primary" id="certificate-submit" type="submit">新增荣誉 <span>＋</span></button>
+            <button class="admin-secondary" id="certificate-cancel" type="button" hidden>取消编辑</button>
             <span class="form-status" id="certificate-status"></span>
           </div>
         </form>
-
-        <div class="admin-items" id="admin-certificate-list">
-          <p class="muted">正在读取证书...</p>
-        </div>
+        <div class="admin-items" id="admin-certificate-list"><p class="muted">正在读取荣誉...</p></div>
       </section>
     </section>
   </main>
-
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-
   <script src="assets/config.js"></script>
   <script type="module" src="assets/admin.js"></script>
 </body>

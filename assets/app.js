@@ -1,201 +1,300 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const cfg = window.PORTFOLIO_CONFIG || {};
-const hasConfig = Boolean(
+const isConfigured = Boolean(
   cfg.supabaseUrl &&
   cfg.supabasePublishableKey &&
   !cfg.supabaseUrl.includes("YOUR_PROJECT_REF") &&
   !cfg.supabasePublishableKey.includes("YOUR_PUBLISHABLE")
 );
-const supabase = hasConfig
-  ? createClient(cfg.supabaseUrl, cfg.supabasePublishableKey)
-  : null;
-
+const supabase = isConfigured ? createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 
-const fallbackWorks = [
-  { id: "demo-1", title: "作品案例一", category: "视觉设计", description: "连接 Supabase 后，后台上传的作品会自动显示在这里。", image_url: "" },
-  { id: "demo-2", title: "作品案例二", category: "项目实践", description: "网站展示页保持静态部署，但内容来自云端数据库。", image_url: "" }
+const demoWorks = [
+  { id: "demo-1", title: "作品档案将在这里展开", category: "品牌设计", description: "登录后台后，每次上传一件作品都会新增到这个作品墙中。", image_url: "", project_url: null },
+  { id: "demo-2", title: "分类让项目更有结构", category: "项目实践", description: "可以按视觉设计、摄影、研究、开发或任何自定义分类筛选。", image_url: "", project_url: null }
 ];
-
-const fallbackCertificates = [
-  { id: "demo-c1", title: "荣誉证书展示区", issuer: "请在管理后台上传", image_url: "" }
+const demoCertificates = [
+  { id: "demo-c1", title: "荣誉与证书", category: "竞赛奖项", issuer: "在管理后台持续添加", image_url: "" }
 ];
 
 let allWorks = [];
-let currentCategory = "all";
+let allCertificates = [];
+let activeWorkCategory = "全部";
+let activeCertificateCategory = "全部";
 
 document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
   $("#current-year").textContent = new Date().getFullYear();
-  bindModal();
+  $("#year-label").textContent = new Date().getFullYear();
+  setupModal();
+  setupReveal();
 
   if (!supabase) {
     applySettings({});
-    renderWorks(fallbackWorks);
-    renderCertificates(fallbackCertificates);
+    allWorks = demoWorks;
+    allCertificates = demoCertificates;
+    renderAll();
+    finishLoading();
     return;
   }
 
-  const [settingsResult, worksResult, certificatesResult] = await Promise.all([
+  const [settingsRes, worksRes, certificatesRes] = await Promise.all([
     supabase.from("site_settings").select("*").eq("id", true).maybeSingle(),
     supabase.from("works").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
     supabase.from("certificates").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
   ]);
 
-  if (settingsResult.error) console.error("读取个人设置失败：", settingsResult.error.message);
-  if (worksResult.error) console.error("读取作品失败：", worksResult.error.message);
-  if (certificatesResult.error) console.error("读取证书失败：", certificatesResult.error.message);
+  if (settingsRes.error) console.error(settingsRes.error);
+  if (worksRes.error) console.error(worksRes.error);
+  if (certificatesRes.error) console.error(certificatesRes.error);
 
-  applySettings(settingsResult.data || {});
-  allWorks = worksResult.data || [];
-  renderFilters(allWorks);
-  renderWorks(allWorks);
-  renderCertificates(certificatesResult.data || []);
+  applySettings(settingsRes.data || {});
+  allWorks = worksRes.data || [];
+  allCertificates = certificatesRes.data || [];
+  renderAll();
+  finishLoading();
+}
+
+function renderAll() {
+  renderFilterBar($("#work-filters"), allWorks, activeWorkCategory, (category) => {
+    activeWorkCategory = category;
+    renderWorks();
+  });
+  renderFilterBar($("#certificate-filters"), allCertificates, activeCertificateCategory, (category) => {
+    activeCertificateCategory = category;
+    renderCertificates();
+  });
+  renderWorks();
+  renderCertificates();
 }
 
 function applySettings(settings) {
-  const value = (key, fallback) => settings[key] || fallback;
-
-  $$("[data-full-name]").forEach((el) => { el.textContent = value("full_name", "你的名字"); });
-  $$("[data-brand-name]").forEach((el) => { el.textContent = `${value("full_name", "个人作品集")} · 作品集`; });
-  $$("[data-role]").forEach((el) => { el.textContent = value("role", "创作者 · 设计师"); });
-  $$("[data-bio]").forEach((el) => { el.textContent = value("bio", "在这里展示作品、项目经验与成长轨迹。每一份成果，都记录着持续探索与认真完成。"); });
-  $$("[data-about-copy]").forEach((el) => { el.textContent = value("bio", "这里可以补充你的学习经历、擅长方向、项目经验与未来目标。管理后台可以随时更新个人信息、上传作品和荣誉证书。"); });
-  $$("[data-email]").forEach((el) => { el.textContent = value("email", "your@email.com"); });
-  $$("[data-location]").forEach((el) => { el.textContent = value("location", "中国"); });
+  const get = (key, fallback) => settings[key] || fallback;
+  $$("[data-full-name]").forEach((el) => el.textContent = get("full_name", "你的名字"));
+  $$("[data-brand-name]").forEach((el) => el.textContent = `${get("full_name", "你的名字")} · 作品集`);
+  $$("[data-role]").forEach((el) => el.textContent = get("role", "创作者 · 设计师"));
+  $$("[data-bio]").forEach((el) => el.textContent = get("bio", "用审美、策略与执行，把每一个想法推向更清晰的结果。这里记录作品、认可与持续成长的轨迹。"));
+  $$("[data-about-copy]").forEach((el) => el.textContent = get("bio", "这里可以继续补充你的学习经历、项目经验、擅长方向与长期目标。作品集不是终点，而是一份不断更新的行动记录。"));
+  $$("[data-email]").forEach((el) => el.textContent = get("email", "your@email.com"));
+  $$("[data-location]").forEach((el) => el.textContent = get("location", "中国"));
 
   const avatar = $("#avatar-image");
-  const placeholder = $("#avatar-placeholder");
   if (settings.avatar_url) {
     avatar.src = settings.avatar_url;
     avatar.hidden = false;
-    placeholder.hidden = true;
+    $("#avatar-fallback").hidden = true;
   }
-
   const resume = $("#resume-button");
   if (settings.resume_url) {
     resume.href = settings.resume_url;
     resume.hidden = false;
-    resume.firstChild.textContent = settings.resume_name || "查看简历 ";
   }
+  document.title = `${get("full_name", "个人作品集")} — 作品档案`;
 }
 
-function renderFilters(works) {
-  const categories = [...new Set(works.map((item) => item.category).filter(Boolean))];
-  const container = $("#work-filters");
+function renderFilterBar(container, entries, activeCategory, onSelect) {
+  const categories = [...new Set(entries.map((item) => item.category || (container.id === "certificate-filters" ? "荣誉" : "作品")).filter(Boolean))];
+  const values = ["全部", ...categories];
   container.innerHTML = "";
 
-  [{ label: "全部", value: "all" }, ...categories.map((category) => ({ label: category, value: category }))]
-    .forEach(({ label, value }) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `filter-button${value === currentCategory ? " is-active" : ""}`;
-      button.dataset.category = value;
-      button.textContent = label;
-      button.addEventListener("click", () => {
-        currentCategory = value;
-        $$(".filter-button", container).forEach((item) => item.classList.toggle("is-active", item.dataset.category === value));
-        renderWorks(allWorks);
-      });
-      container.append(button);
+  values.forEach((category) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `filter-chip${category === activeCategory ? " active" : ""}`;
+    button.innerHTML = `<span>${category}</span><i>${category === "全部" ? entries.length : entries.filter((entry) => (entry.category || (container.id === "certificate-filters" ? "荣誉" : "作品")) === category).length}</i>`;
+    button.addEventListener("click", () => {
+      onSelect(category);
+      [...container.children].forEach((node) => node.classList.toggle("active", node === button));
     });
+    container.append(button);
+  });
 }
 
-function renderWorks(works) {
-  const container = $("#works-grid");
-  container.innerHTML = "";
-  const visibleWorks = currentCategory === "all" ? works : works.filter((item) => item.category === currentCategory);
+function renderWorks() {
+  const grid = $("#works-grid");
+  grid.innerHTML = "";
+  const items = activeWorkCategory === "全部"
+    ? allWorks
+    : allWorks.filter((item) => (item.category || "作品") === activeWorkCategory);
 
-  if (!visibleWorks.length) {
-    container.innerHTML = `<div class="empty-state"><p>这个分类暂时还没有作品。</p></div>`;
+  if (!items.length) {
+    grid.innerHTML = `<div class="empty-archive"><b>NO ENTRY</b><p>这个分类还没有作品。</p></div>`;
     return;
   }
 
-  visibleWorks.forEach((work, index) => {
-    const node = $("#work-template").content.cloneNode(true);
-    const imageButton = $(".work-image-button", node);
-    const image = $(".work-image", node);
-    const title = $(".work-title", node);
-    const category = $(".work-category", node);
-    const description = $(".work-description", node);
-    const projectLink = $(".project-link", node);
+  items.forEach((work, index) => {
+    const card = document.createElement("article");
+    card.className = `work-tile reveal tile-${(index % 5) + 1}`;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "work-open";
 
-    title.textContent = work.title || "未命名作品";
-    category.textContent = work.category || "项目作品";
-    description.textContent = work.description || "暂无作品简介。";
-    image.alt = work.title || "作品图片";
-
+    const media = document.createElement("div");
+    media.className = "work-media";
     if (work.image_url) {
+      const image = new Image();
       image.src = work.image_url;
+      image.alt = work.title || "作品图片";
+      image.loading = "lazy";
+      media.append(image);
     } else {
-      image.remove();
-      imageButton.style.background = index % 2 ? "var(--lime)" : "var(--cream)";
-      imageButton.innerHTML = `<span style="font:500 20px var(--mono); padding:22px; display:block;">${String(index + 1).padStart(2, "0")} / IMAGE</span>`;
+      const placeholder = document.createElement("div");
+      placeholder.className = "media-placeholder";
+      placeholder.textContent = `WORK / ${String(index + 1).padStart(2, "0")}`;
+      media.append(placeholder);
     }
 
-    imageButton.addEventListener("click", () => openModal(work.image_url, `${work.title || "作品"}${work.description ? ` · ${work.description}` : ""}`));
+    const shade = document.createElement("span");
+    shade.className = "media-shade";
+    const open = document.createElement("span");
+    open.className = "open-mark";
+    open.textContent = "VIEW CASE ↗";
+    media.append(shade, open);
 
-    if (work.project_url) {
-      projectLink.href = work.project_url;
-      projectLink.hidden = false;
-    }
+    const content = document.createElement("div");
+    content.className = "work-content";
+    const eyebrow = document.createElement("p");
+    eyebrow.className = "card-kicker";
+    eyebrow.textContent = `${String(index + 1).padStart(2, "0")} / ${work.category || "作品"}`;
+    const title = document.createElement("h3");
+    title.textContent = work.title || "未命名作品";
+    const description = document.createElement("p");
+    description.textContent = work.description || "暂无项目介绍。";
+    content.append(eyebrow, title, description);
 
-    container.append(node);
+    button.append(media, content);
+    button.addEventListener("click", () => openArchive(work, "作品档案", index + 1, items.length));
+    card.append(button);
+    grid.append(card);
   });
+  observeNewReveals(grid);
 }
 
-function renderCertificates(certificates) {
-  const container = $("#certificate-list");
-  container.innerHTML = "";
-  $("#certificate-count").innerHTML = `${String(certificates.length).padStart(2, "0")} <span>项</span>`;
+function renderCertificates() {
+  const grid = $("#certificate-grid");
+  grid.innerHTML = "";
+  const items = activeCertificateCategory === "全部"
+    ? allCertificates
+    : allCertificates.filter((item) => (item.category || "荣誉") === activeCertificateCategory);
 
-  if (!certificates.length) {
-    container.innerHTML = `<div class="empty-state compact"><p>荣誉证书将展示在这里。</p></div>`;
+  $("#certificate-count").textContent = String(allCertificates.length).padStart(2, "0");
+
+  if (!items.length) {
+    grid.innerHTML = `<div class="empty-archive empty-on-dark"><b>NO ENTRY</b><p>这个分类还没有荣誉记录。</p></div>`;
     return;
   }
 
-  certificates.forEach((certificate, index) => {
-    const node = $("#certificate-template").content.cloneNode(true);
-    const card = $(".certificate-card", node);
-    const image = $(".certificate-image", node);
+  items.forEach((certificate, index) => {
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "recognition-card reveal";
 
-    $(".certificate-number", node).textContent = String(index + 1).padStart(2, "0");
-    $(".certificate-title", node).textContent = certificate.title || "未命名证书";
-    $(".certificate-issuer", node).textContent = certificate.issuer || "荣誉证书";
-    image.alt = certificate.title || "证书图片";
+    const number = document.createElement("span");
+    number.className = "recognition-number";
+    number.textContent = String(index + 1).padStart(2, "0");
 
+    const media = document.createElement("div");
+    media.className = "recognition-media";
     if (certificate.image_url) {
+      const image = new Image();
       image.src = certificate.image_url;
+      image.alt = certificate.title || "证书图片";
+      image.loading = "lazy";
+      media.append(image);
     } else {
-      image.style.background = "var(--cream)";
+      media.innerHTML = `<span>AWARD<br>ENTRY</span>`;
     }
 
-    card.addEventListener("click", () => openModal(certificate.image_url, `${certificate.title || "证书"}${certificate.issuer ? ` · ${certificate.issuer}` : ""}`));
-    container.append(node);
+    const body = document.createElement("span");
+    body.className = "recognition-body";
+    const category = document.createElement("small");
+    category.textContent = certificate.category || "荣誉";
+    const title = document.createElement("strong");
+    title.textContent = certificate.title || "未命名荣誉";
+    const issuer = document.createElement("em");
+    issuer.textContent = certificate.issuer || "荣誉档案";
+    body.append(category, title, issuer);
+
+    const arrow = document.createElement("span");
+    arrow.className = "recognition-arrow";
+    arrow.textContent = "↗";
+    card.append(number, media, body, arrow);
+    card.addEventListener("click", () => openArchive(certificate, "荣誉档案", index + 1, items.length));
+    grid.append(card);
+  });
+  observeNewReveals(grid);
+}
+
+function setupModal() {
+  const dialog = $("#archive-modal");
+  $(".modal-close", dialog).addEventListener("click", () => dialog.close());
+  dialog.addEventListener("click", (event) => {
+    if (event.target === dialog) dialog.close();
   });
 }
 
-function bindModal() {
-  const modal = $("#image-modal");
-  const close = $(".modal-close", modal);
+function openArchive(entry, type, sequence, total) {
+  const dialog = $("#archive-modal");
+  const image = $("#modal-image");
+  const noImage = $("#modal-no-image");
 
-  close.addEventListener("click", () => modal.close());
-  modal.addEventListener("click", (event) => {
-    if (event.target === modal) modal.close();
-  });
-  document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape" && modal.open) modal.close();
+  $("#modal-type").textContent = type;
+  $("#modal-title").textContent = entry.title || "未命名条目";
+  $("#modal-meta").textContent = type === "作品档案"
+    ? (entry.category || "作品")
+    : `${entry.category || "荣誉"}${entry.issuer ? ` · ${entry.issuer}` : ""}`;
+  $("#modal-description").textContent = entry.description || (type === "作品档案" ? "暂无项目介绍。" : "点击查看荣誉证书原图。");
+  $("#modal-sequence").textContent = `${String(sequence).padStart(2, "0")} / ${String(total).padStart(2, "0")}`;
+
+  if (entry.image_url) {
+    image.src = entry.image_url;
+    image.alt = entry.title || "";
+    image.hidden = false;
+    noImage.hidden = true;
+  } else {
+    image.hidden = true;
+    noImage.hidden = false;
+  }
+
+  const link = $("#modal-project-link");
+  if (entry.project_url) {
+    link.href = entry.project_url;
+    link.hidden = false;
+  } else {
+    link.hidden = true;
+  }
+
+  dialog.showModal();
+}
+
+function setupReveal() {
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("is-visible");
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12 });
+
+  window.__revealObserver = observer;
+  observeNewReveals(document);
+}
+
+function observeNewReveals(parent) {
+  const observer = window.__revealObserver;
+  $$(".reveal:not(.is-visible)", parent).forEach((element, index) => {
+    element.style.setProperty("--reveal-delay", `${Math.min(index * 55, 330)}ms`);
+    observer?.observe(element);
   });
 }
 
-function openModal(src, caption) {
-  if (!src) return;
-  const modal = $("#image-modal");
-  $("#modal-image").src = src;
-  $("#modal-image").alt = caption;
-  $("#modal-caption").textContent = caption;
-  modal.showModal();
+function finishLoading() {
+  requestAnimationFrame(() => {
+    document.body.classList.add("ready");
+    observeNewReveals(document);
+  });
 }

@@ -1,28 +1,27 @@
 import { createClient } from "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/+esm";
 
 const cfg = window.PORTFOLIO_CONFIG || {};
-const hasConfig = Boolean(
+const isConfigured = Boolean(
   cfg.supabaseUrl &&
   cfg.supabasePublishableKey &&
   !cfg.supabaseUrl.includes("YOUR_PROJECT_REF") &&
   !cfg.supabasePublishableKey.includes("YOUR_PUBLISHABLE")
 );
-const supabase = hasConfig
-  ? createClient(cfg.supabaseUrl, cfg.supabasePublishableKey)
-  : null;
-
+const supabase = isConfigured ? createClient(cfg.supabaseUrl, cfg.supabasePublishableKey) : null;
 const $ = (selector, parent = document) => parent.querySelector(selector);
 const $$ = (selector, parent = document) => [...parent.querySelectorAll(selector)];
 const bucket = cfg.storageBucket || "portfolio-assets";
-let siteSettings = {};
+
+let settings = {};
 let works = [];
 let certificates = [];
 
 document.addEventListener("DOMContentLoaded", init);
 
 async function init() {
-  bindFileLabels();
-  bindForms();
+  bindFileNames();
+  bindActions();
+
   if (!supabase) {
     $("#setup-notice").hidden = false;
     return;
@@ -33,50 +32,51 @@ async function init() {
     $("#login-panel").hidden = false;
     return;
   }
-  await openDashboard(session);
+  await enterDashboard(session);
 }
 
-function bindFileLabels() {
+function bindFileNames() {
   $$('input[type="file"]').forEach((input) => {
     input.addEventListener("change", () => {
-      const target = $(`[data-file-name="${input.name}"]`);
-      if (target) target.textContent = input.files?.[0]?.name || "未选择文件";
+      const label = input.closest(".file-box")?.querySelector(".file-name");
+      if (label) label.textContent = input.files?.[0]?.name || "未选择文件";
     });
   });
 }
 
-function bindForms() {
+function bindActions() {
   $("#login-form").addEventListener("submit", signIn);
   $("#sign-out-button").addEventListener("click", signOut);
   $("#denied-sign-out").addEventListener("click", signOut);
   $("#settings-form").addEventListener("submit", saveSettings);
   $("#work-form").addEventListener("submit", saveWork);
   $("#certificate-form").addEventListener("submit", saveCertificate);
-  $("#work-cancel").addEventListener("click", () => resetManagerForm("work"));
-  $("#certificate-cancel").addEventListener("click", () => resetManagerForm("certificate"));
+  $("#work-cancel").addEventListener("click", () => resetManager("work"));
+  $("#certificate-cancel").addEventListener("click", () => resetManager("certificate"));
 }
 
 async function signIn(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const button = $('button[type="submit"]', form);
-  const email = $("#login-email").value.trim();
-  const password = $("#login-password").value;
-
   button.disabled = true;
-  button.textContent = "正在登录...";
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  button.textContent = "正在验证账号...";
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: $("#login-email").value.trim(),
+    password: $("#login-password").value
+  });
+
   button.disabled = false;
   button.innerHTML = `登录管理后台 <span>→</span>`;
-
   if (error) return toast(`登录失败：${error.message}`, true);
-  await openDashboard(data.session);
+  await enterDashboard(data.session);
 }
 
-async function openDashboard(session) {
+async function enterDashboard(session) {
   const { data: profile, error } = await supabase
     .from("profiles")
-    .select("is_admin, email")
+    .select("email, is_admin")
     .eq("id", session.user.id)
     .maybeSingle();
 
@@ -91,7 +91,6 @@ async function openDashboard(session) {
   $("#dashboard").hidden = false;
   $("#sign-out-button").hidden = false;
   $("#admin-email").textContent = profile.email || session.user.email || "管理员";
-
   await loadData();
 }
 
@@ -101,31 +100,30 @@ async function signOut() {
 }
 
 async function loadData() {
-  const [settingsResult, worksResult, certificatesResult] = await Promise.all([
+  const [settingsRes, worksRes, certificatesRes] = await Promise.all([
     supabase.from("site_settings").select("*").eq("id", true).maybeSingle(),
     supabase.from("works").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false }),
     supabase.from("certificates").select("*").order("sort_order", { ascending: true }).order("created_at", { ascending: false })
   ]);
 
-  if (settingsResult.error || worksResult.error || certificatesResult.error) {
-    toast("读取数据失败，请检查 SQL 初始化和权限设置。", true);
-    console.error(settingsResult.error, worksResult.error, certificatesResult.error);
+  if (settingsRes.error || worksRes.error || certificatesRes.error) {
+    console.error(settingsRes.error, worksRes.error, certificatesRes.error);
+    toast("读取失败。若提示 category 相关错误，请先执行 upgrade-v2.sql。", true);
     return;
   }
 
-  siteSettings = settingsResult.data || {};
-  works = worksResult.data || [];
-  certificates = certificatesResult.data || [];
-
-  hydrateSettingsForm();
-  renderAdminWorks();
-  renderAdminCertificates();
+  settings = settingsRes.data || {};
+  works = worksRes.data || [];
+  certificates = certificatesRes.data || [];
+  fillSettingsForm();
+  renderWorks();
+  renderCertificates();
 }
 
-function hydrateSettingsForm() {
+function fillSettingsForm() {
   const form = $("#settings-form");
   ["full_name", "role", "email", "location", "bio"].forEach((key) => {
-    if (form.elements[key]) form.elements[key].value = siteSettings[key] || "";
+    form.elements[key].value = settings[key] || "";
   });
 }
 
@@ -133,33 +131,33 @@ async function saveSettings(event) {
   event.preventDefault();
   const form = event.currentTarget;
   const status = $("#settings-status");
+  disable(form, true);
   setStatus(status, "正在保存...");
-  disableForm(form, true);
 
   try {
-    const avatarFile = form.elements.avatar_file.files[0];
-    const resumeFile = form.elements.resume_file.files[0];
-    let avatarUrl = siteSettings.avatar_url || null;
-    let avatarPath = siteSettings.avatar_path || null;
-    let resumeUrl = siteSettings.resume_url || null;
-    let resumePath = siteSettings.resume_path || null;
-    let resumeName = siteSettings.resume_name || null;
+    const avatar = form.elements.avatar_file.files[0];
+    const resume = form.elements.resume_file.files[0];
 
-    if (avatarFile) {
-      validateImage(avatarFile);
-      const uploaded = await uploadFile("avatars", avatarFile);
+    let avatarUrl = settings.avatar_url || null;
+    let avatarPath = settings.avatar_path || null;
+    let resumeUrl = settings.resume_url || null;
+    let resumePath = settings.resume_path || null;
+    let resumeName = settings.resume_name || null;
+
+    if (avatar) {
+      validateImage(avatar);
+      const upload = await uploadFile("avatars", avatar);
       if (avatarPath) await removeFile(avatarPath);
-      avatarUrl = uploaded.url;
-      avatarPath = uploaded.path;
+      avatarUrl = upload.url;
+      avatarPath = upload.path;
     }
-
-    if (resumeFile) {
-      validatePdf(resumeFile);
-      const uploaded = await uploadFile("resumes", resumeFile);
+    if (resume) {
+      validatePdf(resume);
+      const upload = await uploadFile("resumes", resume);
       if (resumePath) await removeFile(resumePath);
-      resumeUrl = uploaded.url;
-      resumePath = uploaded.path;
-      resumeName = resumeFile.name;
+      resumeUrl = upload.url;
+      resumePath = upload.path;
+      resumeName = resume.name;
     }
 
     const payload = {
@@ -178,18 +176,16 @@ async function saveSettings(event) {
 
     const { data, error } = await supabase.from("site_settings").update(payload).eq("id", true).select().single();
     if (error) throw error;
-    siteSettings = data;
-    form.elements.avatar_file.value = "";
-    form.elements.resume_file.value = "";
-    $(`[data-file-name="avatar_file"]`).textContent = "未选择新文件";
-    $(`[data-file-name="resume_file"]`).textContent = "未选择新文件";
-    setStatus(status, "已保存 ✓");
-    toast("个人信息已更新，公开页面刷新后即可看到。");
+    settings = data;
+    resetFileInput(form.elements.avatar_file);
+    resetFileInput(form.elements.resume_file);
+    setStatus(status, "已保存，公开网站刷新后即可显示。");
+    toast("个人信息已保存。");
   } catch (error) {
     console.error(error);
     setStatus(status, `保存失败：${humanError(error)}`, true);
   } finally {
-    disableForm(form, false);
+    disable(form, false);
   }
 }
 
@@ -198,33 +194,30 @@ async function saveWork(event) {
   const form = event.currentTarget;
   const status = $("#work-status");
   const id = form.elements.id.value;
-  const existingPath = form.elements.stored_path.value || null;
-  const imageFile = form.elements.image_file.files[0];
+  const file = form.elements.image_file.files[0];
+  const old = works.find((item) => item.id === id);
 
-  if (!id && !imageFile) {
-    return setStatus(status, "新建作品时必须选择一张图片。", true);
-  }
-
-  disableForm(form, true);
-  setStatus(status, id ? "正在更新..." : "正在上传...");
+  if (!id && !file) return setStatus(status, "新建作品需要先选择封面图片。", true);
+  disable(form, true);
+  setStatus(status, id ? "正在保存修改..." : "正在新增作品...");
 
   try {
-    let imageUrl = id ? works.find((item) => item.id === id)?.image_url : null;
-    let storedPath = existingPath;
+    let imageUrl = old?.image_url || null;
+    let storedPath = form.elements.stored_path.value || old?.stored_path || null;
 
-    if (imageFile) {
-      validateImage(imageFile);
-      const uploaded = await uploadFile("works", imageFile);
+    if (file) {
+      validateImage(file);
+      const upload = await uploadFile("works", file);
       if (storedPath) await removeFile(storedPath);
-      imageUrl = uploaded.url;
-      storedPath = uploaded.path;
+      imageUrl = upload.url;
+      storedPath = upload.path;
     }
 
     const payload = {
       title: form.elements.title.value.trim(),
       category: form.elements.category.value.trim() || "作品",
       description: form.elements.description.value.trim(),
-      project_url: normalizedUrl(form.elements.project_url.value.trim()),
+      project_url: normalizeUrl(form.elements.project_url.value.trim()),
       image_url: imageUrl,
       stored_path: storedPath
     };
@@ -234,14 +227,14 @@ async function saveWork(event) {
       : await supabase.from("works").insert(payload).select().single();
 
     if (response.error) throw response.error;
-    toast(id ? "作品已更新。" : "作品已上传。");
-    resetManagerForm("work");
+    toast(id ? "作品已更新。" : "新作品已新增，可以继续上传下一件。");
+    resetManager("work");
     await loadData();
   } catch (error) {
     console.error(error);
     setStatus(status, `操作失败：${humanError(error)}`, true);
   } finally {
-    disableForm(form, false);
+    disable(form, false);
   }
 }
 
@@ -250,30 +243,28 @@ async function saveCertificate(event) {
   const form = event.currentTarget;
   const status = $("#certificate-status");
   const id = form.elements.id.value;
-  const existingPath = form.elements.stored_path.value || null;
-  const imageFile = form.elements.image_file.files[0];
+  const file = form.elements.image_file.files[0];
+  const old = certificates.find((item) => item.id === id);
 
-  if (!id && !imageFile) {
-    return setStatus(status, "新建证书时必须选择一张图片。", true);
-  }
-
-  disableForm(form, true);
-  setStatus(status, id ? "正在更新..." : "正在上传...");
+  if (!id && !file) return setStatus(status, "新建荣誉需要先选择证书图片。", true);
+  disable(form, true);
+  setStatus(status, id ? "正在保存修改..." : "正在新增荣誉...");
 
   try {
-    let imageUrl = id ? certificates.find((item) => item.id === id)?.image_url : null;
-    let storedPath = existingPath;
+    let imageUrl = old?.image_url || null;
+    let storedPath = form.elements.stored_path.value || old?.stored_path || null;
 
-    if (imageFile) {
-      validateImage(imageFile);
-      const uploaded = await uploadFile("certificates", imageFile);
+    if (file) {
+      validateImage(file);
+      const upload = await uploadFile("certificates", file);
       if (storedPath) await removeFile(storedPath);
-      imageUrl = uploaded.url;
-      storedPath = uploaded.path;
+      imageUrl = upload.url;
+      storedPath = upload.path;
     }
 
     const payload = {
       title: form.elements.title.value.trim(),
+      category: form.elements.category.value.trim() || "荣誉",
       issuer: form.elements.issuer.value.trim(),
       image_url: imageUrl,
       stored_path: storedPath
@@ -284,78 +275,74 @@ async function saveCertificate(event) {
       : await supabase.from("certificates").insert(payload).select().single();
 
     if (response.error) throw response.error;
-    toast(id ? "证书已更新。" : "证书已上传。");
-    resetManagerForm("certificate");
+    toast(id ? "荣誉已更新。" : "新荣誉已新增，可以继续上传下一项。");
+    resetManager("certificate");
     await loadData();
   } catch (error) {
     console.error(error);
     setStatus(status, `操作失败：${humanError(error)}`, true);
   } finally {
-    disableForm(form, false);
+    disable(form, false);
   }
 }
 
-function renderAdminWorks() {
-  const container = $("#admin-work-list");
+function renderWorks() {
   $("#admin-work-count").textContent = `${works.length} 个作品`;
+  $("#nav-work-count").textContent = works.length;
+  const container = $("#admin-work-list");
   container.innerHTML = "";
 
   if (!works.length) {
-    container.innerHTML = `<p class="muted">还没有作品，使用上方表单上传第一项吧。</p>`;
+    container.innerHTML = `<p class="muted">还没有作品。用上方表单提交第一件作品后，可以连续继续上传更多作品。</p>`;
     return;
   }
 
   works.forEach((work) => {
-    container.append(adminItem({
-      image: work.image_url,
-      title: work.title,
-      meta: `${work.category || "作品"}${work.project_url ? " · 已设置项目链接" : ""}`,
-      onEdit: () => editWork(work),
-      onDelete: () => deleteRecord("works", work, "作品")
-    }));
+    container.append(makeItem(work.image_url, work.title, `${work.category || "作品"}${work.project_url ? " · 有项目链接" : ""}`, () => editWork(work), () => deleteItem("works", work, "作品")));
   });
 }
 
-function renderAdminCertificates() {
-  const container = $("#admin-certificate-list");
+function renderCertificates() {
   $("#admin-certificate-count").textContent = `${certificates.length} 项荣誉`;
+  $("#nav-certificate-count").textContent = certificates.length;
+  const container = $("#admin-certificate-list");
   container.innerHTML = "";
 
   if (!certificates.length) {
-    container.innerHTML = `<p class="muted">还没有证书，使用上方表单上传第一项吧。</p>`;
+    container.innerHTML = `<p class="muted">还没有荣誉。用上方表单提交第一项后，可以连续继续上传更多奖项或证书。</p>`;
     return;
   }
 
   certificates.forEach((certificate) => {
-    container.append(adminItem({
-      image: certificate.image_url,
-      title: certificate.title,
-      meta: certificate.issuer || "荣誉证书",
-      onEdit: () => editCertificate(certificate),
-      onDelete: () => deleteRecord("certificates", certificate, "证书")
-    }));
+    container.append(makeItem(certificate.image_url, certificate.title, `${certificate.category || "荣誉"}${certificate.issuer ? ` · ${certificate.issuer}` : ""}`, () => editCertificate(certificate), () => deleteItem("certificates", certificate, "荣誉")));
   });
 }
 
-function adminItem({ image, title, meta, onEdit, onDelete }) {
+function makeItem(imageUrl, title, meta, edit, remove) {
   const item = document.createElement("div");
   item.className = "admin-item";
-  item.innerHTML = `
-    <img src="${escapeAttribute(image || "")}" alt="">
-    <div>
-      <p class="admin-item-title"></p>
-      <p class="admin-item-meta"></p>
-    </div>
-    <div class="item-actions">
-      <button type="button">编辑</button>
-      <button class="delete" type="button">删除</button>
-    </div>
-  `;
-  $(".admin-item-title", item).textContent = title || "未命名";
-  $(".admin-item-meta", item).textContent = meta || "";
-  const [editButton, deleteButton] = $$("button", item);
-  editButton.addEventListener("click", onEdit);
-  deleteButton.addEventListener("click", onDelete);
+  const image = document.createElement("img");
+  image.src = imageUrl || "";
+  image.alt = "";
+  const copy = document.createElement("div");
+  const heading = document.createElement("strong");
+  heading.textContent = title || "未命名";
+  const sub = document.createElement("small");
+  sub.textContent = meta || "";
+  copy.append(heading, sub);
+  const actions = document.createElement("div");
+  actions.className = "item-actions";
+  const editButton = document.createElement("button");
+  editButton.type = "button";
+  editButton.textContent = "编辑";
+  editButton.addEventListener("click", edit);
+  const deleteButton = document.createElement("button");
+  deleteButton.type = "button";
+  deleteButton.textContent = "删除";
+  deleteButton.className = "danger";
+  deleteButton.addEventListener("click", remove);
+  actions.append(editButton, deleteButton);
+  item.append(image, copy, actions);
   return item;
 }
 
@@ -369,7 +356,7 @@ function editWork(work) {
   form.elements.project_url.value = work.project_url || "";
   $("#work-submit").innerHTML = `保存作品修改 <span>✓</span>`;
   $("#work-cancel").hidden = false;
-  $("#work-status").textContent = "编辑模式：不选择新图片会保留原图。";
+  setStatus($("#work-status"), "编辑模式：不选择新图片，将继续保留旧图片。");
   $("#work-manager").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
@@ -378,26 +365,28 @@ function editCertificate(certificate) {
   form.elements.id.value = certificate.id;
   form.elements.stored_path.value = certificate.stored_path || "";
   form.elements.title.value = certificate.title || "";
+  form.elements.category.value = certificate.category || "荣誉";
   form.elements.issuer.value = certificate.issuer || "";
-  $("#certificate-submit").innerHTML = `保存证书修改 <span>✓</span>`;
+  $("#certificate-submit").innerHTML = `保存荣誉修改 <span>✓</span>`;
   $("#certificate-cancel").hidden = false;
-  $("#certificate-status").textContent = "编辑模式：不选择新图片会保留原图。";
+  setStatus($("#certificate-status"), "编辑模式：不选择新图片，将继续保留旧图片。");
   $("#certificate-manager").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function resetManagerForm(kind) {
-  const form = $(`#${kind}-form`);
+function resetManager(type) {
+  const form = $(`#${type}-form`);
   form.reset();
   form.elements.id.value = "";
   form.elements.stored_path.value = "";
-  $(`[data-file-name="image_file"]`, form).textContent = "未选择文件";
-  $(`#${kind}-submit`).innerHTML = kind === "work" ? `上传作品 <span>↑</span>` : `上传证书 <span>↑</span>`;
-  $(`#${kind}-cancel`).hidden = true;
-  $(`#${kind}-status`).textContent = "";
+  const fileName = $(".file-name", form);
+  if (fileName) fileName.textContent = "未选择文件";
+  $(`#${type}-submit`).innerHTML = type === "work" ? `新增作品 <span>＋</span>` : `新增荣誉 <span>＋</span>`;
+  $(`#${type}-cancel`).hidden = true;
+  setStatus($(`#${type}-status`), "");
 }
 
-async function deleteRecord(table, record, label) {
-  if (!window.confirm(`确定删除“${record.title}”吗？删除后无法恢复。`)) return;
+async function deleteItem(table, record, label) {
+  if (!window.confirm(`确定删除“${record.title || label}”吗？删除后无法恢复。`)) return;
   try {
     const { error } = await supabase.from(table).delete().eq("id", record.id);
     if (error) throw error;
@@ -405,13 +394,12 @@ async function deleteRecord(table, record, label) {
     toast(`${label}已删除。`);
     await loadData();
   } catch (error) {
-    console.error(error);
     toast(`删除失败：${humanError(error)}`, true);
   }
 }
 
 async function uploadFile(folder, file) {
-  const path = `${folder}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+  const path = `${folder}/${new Date().toISOString().slice(0, 10)}/${crypto.randomUUID()}-${safeName(file.name)}`;
   const { error } = await supabase.storage.from(bucket).upload(path, file, {
     cacheControl: "3600",
     upsert: false,
@@ -424,12 +412,11 @@ async function uploadFile(folder, file) {
 
 async function removeFile(path) {
   const { error } = await supabase.storage.from(bucket).remove([path]);
-  if (error) console.warn("旧文件未删除：", error.message);
+  if (error) console.warn("旧文件清理失败：", error.message);
 }
 
 function validateImage(file) {
-  const allowed = ["image/jpeg", "image/png", "image/webp"];
-  if (!allowed.includes(file.type)) throw new Error("图片只支持 JPG、PNG 或 WebP 格式。");
+  if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("图片仅支持 JPG、PNG、WebP。");
   if (file.size > 10 * 1024 * 1024) throw new Error("图片不能超过 10 MB。");
 }
 
@@ -438,48 +425,47 @@ function validatePdf(file) {
   if (file.size > 15 * 1024 * 1024) throw new Error("简历不能超过 15 MB。");
 }
 
-function safeFileName(name) {
-  return name
-    .normalize("NFKD")
-    .replace(/[^\w.\-]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .toLowerCase() || "file";
-}
-
-function normalizedUrl(url) {
-  if (!url) return null;
+function normalizeUrl(value) {
+  if (!value) return null;
   try {
-    const parsed = new URL(url);
-    if (!["http:", "https:"].includes(parsed.protocol)) throw new Error();
-    return parsed.href;
+    const url = new URL(value);
+    if (!["https:", "http:"].includes(url.protocol)) throw new Error();
+    return url.href;
   } catch {
-    throw new Error("项目链接必须以 http:// 或 https:// 开头。");
+    throw new Error("项目链接需以 http:// 或 https:// 开头。");
   }
 }
 
-function disableForm(form, disabled) {
-  $$("input, textarea, button", form).forEach((control) => { control.disabled = disabled; });
+function safeName(name) {
+  return name.normalize("NFKD").replace(/[^\w.-]+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "file";
 }
 
-function setStatus(element, message, isError = false) {
-  element.textContent = message;
-  element.classList.toggle("error", isError);
+function resetFileInput(input) {
+  input.value = "";
+  const fileName = input.closest(".file-box")?.querySelector(".file-name");
+  if (fileName) fileName.textContent = "未选择新文件";
+}
+
+function disable(form, value) {
+  $$("input, textarea, button", form).forEach((node) => node.disabled = value);
+}
+
+function setStatus(node, message, error = false) {
+  node.textContent = message;
+  node.classList.toggle("error", error);
 }
 
 function humanError(error) {
-  return error?.message || "未知错误，请检查网络和 Supabase 配置。";
+  const message = error?.message || "未知错误。";
+  if (message.toLowerCase().includes("category")) return "数据库缺少分类字段，请先执行 supabase/upgrade-v2.sql。";
+  return message;
 }
 
-function toast(message, isError = false) {
-  const element = $("#toast");
-  element.textContent = message;
-  element.classList.toggle("error", isError);
-  element.classList.add("show");
-  window.clearTimeout(toast.timer);
-  toast.timer = window.setTimeout(() => element.classList.remove("show"), 3600);
-}
-
-function escapeAttribute(value) {
-  return String(value).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function toast(message, error = false) {
+  const node = $("#toast");
+  node.textContent = message;
+  node.classList.toggle("error", error);
+  node.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(() => node.classList.remove("show"), 3600);
 }
